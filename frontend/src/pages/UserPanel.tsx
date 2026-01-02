@@ -19,10 +19,10 @@ import {
   Center,
   Pagination,
   Select,
+  ActionIcon,
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
-import { IconLogout, IconDownload } from '@tabler/icons-react'
-import { CSV_VIEW } from '../config/constants'
+import { IconLogout, IconDownload, IconEye } from '@tabler/icons-react'
 
 export default function UserPanel() {
   const { user, token, logout } = useAuth()
@@ -36,26 +36,31 @@ export default function UserPanel() {
   useWebSocket(token, (data: WebSocketMessage) => {
     if (data.event === 'csv_list_updated') {
       if (data.action === 'uploaded' && data.file) {
-        setCsvFiles((prev: CSVFile[]) => [data.file as CSVFile, ...prev])
+        // Reload the list silently (without loading state) for instant update
+        loadCSVFiles(false)
         notifications.show({
           title: 'New CSV available',
           message: `${data.file.filename} was uploaded`,
           color: 'blue',
         })
       } else if (data.action === 'deleted') {
+        // Remove from state immediately for instant feedback
         setCsvFiles((prev: CSVFile[]) => prev.filter((f: CSVFile) => f.id !== data.file_id))
+        // Also reload silently to ensure consistency
+        loadCSVFiles(false)
         notifications.show({
           title: 'CSV removed',
           message: 'A CSV file was removed',
           color: 'orange',
         })
       }
-      // Refresh the list
-      loadCSVFiles()
     }
   })
 
-  const loadCSVFiles = useCallback(async () => {
+  const loadCSVFiles = useCallback(async (showLoading = false) => {
+    if (showLoading) {
+      setLoading(true)
+    }
     try {
       const files = await CSVService.list()
       setCsvFiles(files)
@@ -66,13 +71,17 @@ export default function UserPanel() {
         message,
         color: 'red',
       })
+    } finally {
+      if (showLoading) {
+        setLoading(false)
+      }
     }
   }, [])
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
-      await loadCSVFiles()
+      await loadCSVFiles(true)
       setLoading(false)
     }
     loadData()
@@ -123,7 +132,7 @@ export default function UserPanel() {
   return (
     <Container size="xl" py="xl">
       <Group justify="space-between" mb="xl">
-        <Title>CSV Files</Title>
+        <Title>Dashboard</Title>
         <Group>
           <Text>Welcome, {user?.username}</Text>
           <Button leftSection={<IconLogout size={16} />} variant="light" onClick={logout}>
@@ -133,12 +142,15 @@ export default function UserPanel() {
       </Group>
 
       <Paper p="md" mb="md" withBorder>
-        <Group justify="space-between" align="flex-end">
-          <Text size="sm" c="dimmed" fw={500}>
-            Total: {csvFiles.length} files
-          </Text>
+        <Group justify="space-between" align="flex-end" >
+          <div className="grid">
+            <Title order={3}>CSV Files</Title>
+            <Text size="sm" c="dimmed" fw={500}>
+              Total: {csvFiles.length} files
+            </Text>
+          </div>
           <Select
-            label="Items per page"
+            label="Items per page:"
             value={itemsPerPage.toString()}
             onChange={(value) => {
               setItemsPerPage(parseInt(value || '10'))
@@ -176,23 +188,34 @@ export default function UserPanel() {
             ) : (
               paginatedFiles.map((file: CSVFile) => (
                 <Table.Tr key={file.id}>
-                  <Table.Td>{file.filename}</Table.Td>
+                  <Table.Td>
+                    <span className='font-bold hover:text-blue-500 cursor-pointer' onClick={() => handleViewFile(file.id)}>
+                      {file.filename}
+                    </span>
+                  </Table.Td>
                   <Table.Td>{formatFileSize(file.file_size)}</Table.Td>
                   <Table.Td>{file.uploader_username}</Table.Td>
                   <Table.Td>{new Date(file.uploaded_at).toLocaleString()}</Table.Td>
                   <Table.Td>
                     <Group gap="xs">
-                      <Button variant="light" size="xs" onClick={() => handleViewFile(file.id)}>
-                        View
-                      </Button>
-                      <Button
+
+                      <ActionIcon
+                        color="blue"
                         variant="light"
-                        size="xs"
-                        leftSection={<IconDownload size={14} />}
-                        onClick={() => handleDownloadFile(file.id, file.filename)}
+                        onClick={() => handleViewFile(file.id)}
+                        title="View"
                       >
-                        Download
-                      </Button>
+                        <IconEye size={16} />
+                      </ActionIcon>
+                      <ActionIcon
+                        color="green"
+                        variant="light"
+                        onClick={() => handleDownloadFile(file.id, file.filename)}
+                        title="Download"
+                      >
+                        <IconDownload size={16} />
+                      </ActionIcon>
+
                     </Group>
                   </Table.Td>
                 </Table.Tr>
@@ -202,21 +225,23 @@ export default function UserPanel() {
         </Table>
       </Paper>
 
-      {totalPages > 1 && (
-        <Paper p="md" mt="md" withBorder>
-          <Group justify="space-between" align="center">
-            <Text size="sm" c="dimmed">
-              Page {currentPage} of {totalPages} ({csvFiles.length} total files)
-            </Text>
-            <Pagination
-              value={currentPage}
-              onChange={setCurrentPage}
-              total={totalPages}
-              size="sm"
-            />
-          </Group>
-        </Paper>
-      )}
-    </Container>
+      {
+        totalPages > 1 && (
+          <Paper p="md" mt="md" withBorder>
+            <Group justify="space-between" align="center">
+              <Text size="sm" c="dimmed">
+                Page {currentPage} of {totalPages} ({csvFiles.length} total files)
+              </Text>
+              <Pagination
+                value={currentPage}
+                onChange={setCurrentPage}
+                total={totalPages}
+                size="sm"
+              />
+            </Group>
+          </Paper>
+        )
+      }
+    </Container >
   )
 }

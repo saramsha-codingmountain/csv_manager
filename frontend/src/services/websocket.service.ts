@@ -24,8 +24,7 @@ export class WebSocketService {
     this.token = token
     this.disconnect()
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const wsUrl = `${protocol}//${API_CONFIG.WS_URL.replace(/^https?:\/\//, '')}${API_ENDPOINTS.WS.CSV_UPDATES}`
+    const wsUrl = this.buildWebSocketUrl()
 
     try {
       this.ws = new WebSocket(wsUrl)
@@ -61,6 +60,34 @@ export class WebSocketService {
       console.error('Error creating WebSocket connection:', error)
       this.attemptReconnect()
     }
+  }
+
+  /**
+   * Build a normalized WebSocket URL regardless of the scheme provided in config
+   */
+  private buildWebSocketUrl(): string {
+    const endpoint = API_ENDPOINTS.WS.CSV_UPDATES.startsWith('/')
+      ? API_ENDPOINTS.WS.CSV_UPDATES
+      : `/${API_ENDPOINTS.WS.CSV_UPDATES}`
+
+    const configUrl = API_CONFIG.WS_URL.trim()
+    // If caller provided full ws/wss URL, use it as-is
+    if (configUrl.startsWith('ws://') || configUrl.startsWith('wss://')) {
+      return `${configUrl.replace(/\/+$/, '')}${endpoint}`
+    }
+
+    // Convert http/https URLs to ws/wss while preserving host:port
+    if (configUrl.startsWith('http://') || configUrl.startsWith('https://')) {
+      const normalizedOrigin = configUrl
+        .replace(/^https:\/\//, 'wss://')
+        .replace(/^http:\/\//, 'ws://')
+        .replace(/\/+$/, '')
+      return `${normalizedOrigin}${endpoint}`
+    }
+
+    // Fallback for bare host values
+    const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://'
+    return `${protocol}${configUrl.replace(/\/+$/, '')}${endpoint}`
   }
 
   /**

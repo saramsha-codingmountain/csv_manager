@@ -26,7 +26,6 @@ import { CSV_VIEW } from '../config/constants'
 export default function CSVViewPage() {
   const { fileId } = useParams<{ fileId: string }>()
   const navigate = useNavigate()
-  const { user } = useAuth()
   const [csvData, setCsvData] = useState<CSVViewData | null>(null)
   const [loading, setLoading] = useState(true)
   const [maxRows, setMaxRows] = useState(CSV_VIEW.DEFAULT_MAX_ROWS)
@@ -114,13 +113,13 @@ export default function CSVViewPage() {
       <Group justify="space-between" mb="xl">
         <Group>
           <Button
-            variant="light"
+            color='gray'
+            variant="subtle"
             leftSection={<IconArrowLeft size={16} />}
             onClick={() => navigate(-1)}
           >
             Back
           </Button>
-          <Title>{csvData.filename}</Title>
         </Group>
         <Group>
           <Button
@@ -134,14 +133,19 @@ export default function CSVViewPage() {
       </Group>
 
       <Paper p="md" mb="md" withBorder>
-        <Group justify="space-between" align="flex-end" mb="md">
+        <Group justify="space-between" align="items-center" mb="md">
           <Group gap="md">
-            <Text size="sm" c="dimmed" fw={500}>
-              Total rows: {csvData.total_rows}
-            </Text>
-            <Text size="sm" c="dimmed" fw={500}>
-              Displayed: {csvData.displayed_rows}
-            </Text>
+            <div className="grid gap-2">
+              <Title >{csvData.filename}</Title>
+              <div className="flex gap-4">
+                <Text size="sm" c="dimmed" fw={500}>
+                  Total rows: {csvData.total_rows}
+                </Text>
+                <Text size="sm" c="dimmed" fw={500}>
+                  Displayed: {csvData.displayed_rows}
+                </Text>
+              </div>
+            </div>
           </Group>
           <Group gap="md" align="flex-end">
             <Select

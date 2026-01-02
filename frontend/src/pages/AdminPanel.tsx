@@ -38,13 +38,13 @@ export default function AdminPanel() {
   const [deleteUserId, setDeleteUserId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
-  
+
   // Pagination states
   const [csvCurrentPage, setCsvCurrentPage] = useState(1)
   const [csvItemsPerPage, setCsvItemsPerPage] = useState(10)
   const [usersCurrentPage, setUsersCurrentPage] = useState(1)
   const [usersItemsPerPage, setUsersItemsPerPage] = useState(10)
-  
+
   // Create user form states
   const [createUserModalOpen, setCreateUserModalOpen] = useState(false)
   const [newUsername, setNewUsername] = useState('')
@@ -52,7 +52,7 @@ export default function AdminPanel() {
   const [newPassword, setNewPassword] = useState('')
   const [newRole, setNewRole] = useState<'user' | 'admin'>('user')
   const [creatingUser, setCreatingUser] = useState(false)
-  
+
   // Edit user form states
   const [editUserModalOpen, setEditUserModalOpen] = useState(false)
   const [editingUserId, setEditingUserId] = useState<number | null>(null)
@@ -66,22 +66,24 @@ export default function AdminPanel() {
   useWebSocket(token, (data: WebSocketMessage) => {
     if (data.event === 'csv_list_updated') {
       if (data.action === 'uploaded' && data.file) {
-        setCsvFiles((prev: CSVFile[]) => [data.file as CSVFile, ...prev])
+        // Reload the list silently for instant update
+        loadCSVFiles()
         notifications.show({
           title: 'New CSV uploaded',
           message: `${data.file.filename} was uploaded`,
           color: 'blue',
         })
       } else if (data.action === 'deleted') {
+        // Remove from state immediately for instant feedback
         setCsvFiles((prev: CSVFile[]) => prev.filter((f: CSVFile) => f.id !== data.file_id))
+        // Also reload to ensure consistency
+        loadCSVFiles()
         notifications.show({
           title: 'CSV deleted',
           message: 'A CSV file was deleted',
           color: 'orange',
         })
       }
-      // Refresh the list
-      loadCSVFiles()
     }
   })
 
@@ -190,7 +192,7 @@ export default function AdminPanel() {
   const handleViewFile = (fileId: number) => {
     navigate(`/csv/${fileId}/view`)
   }
-  
+
   const handleCreateUser = async () => {
     if (!newUsername || !newEmail || !newPassword) {
       notifications.show({
@@ -200,7 +202,7 @@ export default function AdminPanel() {
       })
       return
     }
-    
+
     setCreatingUser(true)
     try {
       await signup(newUsername, newEmail, newPassword, newRole)
@@ -226,11 +228,11 @@ export default function AdminPanel() {
       setCreatingUser(false)
     }
   }
-  
+
   const handleEditUser = (userId: number) => {
     const userToEdit = users.find((u) => u.id === userId)
     if (!userToEdit) return
-    
+
     setEditingUserId(userId)
     setEditUsername(userToEdit.username)
     setEditEmail(userToEdit.email)
@@ -238,7 +240,7 @@ export default function AdminPanel() {
     setEditRole(userToEdit.role)
     setEditUserModalOpen(true)
   }
-  
+
   const handleUpdateUser = async () => {
     if (!editingUserId) return
     if (!editUsername || !editEmail) {
@@ -249,7 +251,7 @@ export default function AdminPanel() {
       })
       return
     }
-    
+
     setUpdatingUser(true)
     try {
       const updateData: {
@@ -262,12 +264,12 @@ export default function AdminPanel() {
         email: editEmail,
         role: editRole,
       }
-      
+
       // Only include password if it's been changed
       if (editPassword) {
         updateData.password = editPassword
       }
-      
+
       await UsersService.update(editingUserId, updateData)
       notifications.show({
         title: 'Success',
@@ -340,7 +342,7 @@ export default function AdminPanel() {
   return (
     <Container size="xl" py="xl">
       <Group justify="space-between" mb="xl">
-        <Title>Admin Panel</Title>
+        <Title>Admin Dashboard</Title>
         <Group>
           <Text>Welcome, {user?.username}</Text>
           <Button leftSection={<IconLogout size={16} />} variant="light" onClick={logout}>
@@ -358,21 +360,28 @@ export default function AdminPanel() {
         <Tabs.Panel value="csv" pt="xl">
           <Paper p="md" mb="md" withBorder>
             <Group justify="space-between" align="flex-end">
-              <FileButton onChange={handleFileUpload} accept=".csv" disabled={uploading}>
-                {(props) => (
-                  <Button
-                    leftSection={<IconUpload size={16} />}
-                    loading={uploading}
-                    {...props}
-                  >
-                    Upload CSV
-                  </Button>
-                )}
-              </FileButton>
-              <Group gap="md" align="flex-end">
+              <div className="grid">
+                <div className="flex gap-4 items-center">
+                  <Title order={3}>CSV Files</Title>
+                  <FileButton onChange={handleFileUpload} accept=".csv" disabled={uploading}>
+                    {(props) => (
+                      <Button
+                        size='sm'
+                        leftSection={<IconUpload size={16} />}
+                        loading={uploading}
+                        {...props}
+                      >
+                        Upload CSV
+                      </Button>
+                    )}
+                  </FileButton>
+                </div>
                 <Text size="sm" c="dimmed" fw={500}>
                   Total: {csvFiles.length} files
                 </Text>
+              </div>
+
+              <Group gap="md" align="flex-end">
                 <Select
                   label="Items per page"
                   value={csvItemsPerPage.toString()}
@@ -413,7 +422,11 @@ export default function AdminPanel() {
                 ) : (
                   paginatedCsvFiles.map((file: CSVFile) => (
                     <Table.Tr key={file.id}>
-                      <Table.Td>{file.filename}</Table.Td>
+                      <Table.Td>
+                        <span className='font-bold hover:text-blue-500 cursor-pointer' onClick={() => handleViewFile(file.id)}>
+                          {file.filename}
+                        </span>
+                      </Table.Td>
                       <Table.Td>{formatFileSize(file.file_size)}</Table.Td>
                       <Table.Td>{file.uploader_username}</Table.Td>
                       <Table.Td>{new Date(file.uploaded_at).toLocaleString()}</Table.Td>
@@ -472,11 +485,18 @@ export default function AdminPanel() {
         <Tabs.Panel value="users" pt="xl">
           <Paper p="md" mb="md" withBorder>
             <Group justify="space-between" align="flex-end">
-              <Button onClick={() => setCreateUserModalOpen(true)}>Create New User</Button>
-              <Group gap="md" align="flex-end">
+              <section>
+
+                <div className="flex gap-4 items-center">
+                  <Title order={3}>User Details</Title>
+                  <Button size="sm" onClick={() => setCreateUserModalOpen(true)}>Create New User</Button>
+                </div>
                 <Text size="sm" c="dimmed" fw={500}>
                   Total: {users.length} users
                 </Text>
+              </section>
+              <Group gap="md" align="flex-end">
+
                 <Select
                   label="Items per page"
                   value={usersItemsPerPage.toString()}
@@ -523,28 +543,28 @@ export default function AdminPanel() {
                       <Table.Td>{u.email}</Table.Td>
                       <Table.Td>{u.role}</Table.Td>
                       <Table.Td>{new Date(u.created_at).toLocaleString()}</Table.Td>
-                    <Table.Td>
-                      <Group gap="xs">
-                        <ActionIcon
-                          color="blue"
-                          variant="light"
-                          onClick={() => handleEditUser(u.id)}
-                          title="Edit"
-                        >
-                          <IconEdit size={16} />
-                        </ActionIcon>
-                        {u.id !== user?.id && (
+                      <Table.Td>
+                        <Group gap="xs">
                           <ActionIcon
-                            color="red"
+                            color="blue"
                             variant="light"
-                            onClick={() => setDeleteUserId(u.id)}
-                            title="Delete"
+                            onClick={() => handleEditUser(u.id)}
+                            title="Edit"
                           >
-                            <IconTrash size={16} />
+                            <IconEdit size={16} />
                           </ActionIcon>
-                        )}
-                      </Group>
-                    </Table.Td>
+                          {u.id !== user?.id && (
+                            <ActionIcon
+                              color="red"
+                              variant="light"
+                              onClick={() => setDeleteUserId(u.id)}
+                              title="Delete"
+                            >
+                              <IconTrash size={16} />
+                            </ActionIcon>
+                          )}
+                        </Group>
+                      </Table.Td>
                     </Table.Tr>
                   ))
                 )}
@@ -736,6 +756,6 @@ export default function AdminPanel() {
           </Button>
         </Group>
       </Modal>
-    </Container>
+    </Container >
   )
 }

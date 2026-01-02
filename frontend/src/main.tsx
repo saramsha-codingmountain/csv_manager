@@ -9,7 +9,12 @@ import '@mantine/notifications/styles.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <MantineProvider>
+    <MantineProvider theme={{
+      fontFamily: 'Inter, sans-serif',
+      defaultRadius: 'lg',
+      primaryColor: 'green',
+
+    }}>
       <Notifications />
       <App />
     </MantineProvider>

@@ -40,7 +40,8 @@ async def upload_csv(
             "id": csv_file.id,
             "filename": csv_file.filename,
             "file_size": csv_file.file_size,
-            "uploader_username": current_user.username,
+            "uploader_id": csv_file.uploader_id,
+            "uploader_username": csv_file.uploader.username,
             "uploaded_at": csv_file.uploaded_at.isoformat()
         }
     })

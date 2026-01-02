@@ -38,43 +38,52 @@ export default function Login() {
   }
 
   return (
-    <Container size={420} my={40}>
-      <Title ta="center" mb="md">
-        CSV Manager
-      </Title>
-      <Text c="dimmed" size="sm" ta="center" mt={5} mb="xl">
-        Log in to your account
-      </Text>
+    <div className="flex min-h-svh">
+      <div className='flex-1 w-full'>
+        <img className='object-cover w-full h-full' src="/images/login-img.jpg" alt="side-image-login" />
+      </div>
+      <div className='flex-1 w-full flex items-center justify-center'>
+        <Container size={420} my={40}>
+          <Title ta="center" mb="md">
+            CSV Manager
+          </Title>
 
-      <Paper withBorder shadow="md" p={30} mt={30} radius="md">
-        <form onSubmit={handleSubmit}>
-          <TextInput
-            label="Email"
-            type="email"
-            placeholder="Enter your email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            mb="md"
-          />
-          <TextInput
-            label="Password"
-            type="password"
-            placeholder="Enter your password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            mb="xl"
-          />
-          <Button type="submit" fullWidth loading={loading}>
-            Sign in
-          </Button>
-        </form>
 
-        <Text size="sm" ta="center" mt="md">
-          Don't have an account? Contact an admin to create one.
-        </Text>
-      </Paper>
-    </Container>
+          <Paper withBorder shadow="md" p={30} mt={30} radius="md">
+            <form onSubmit={handleSubmit}>
+              <Text c="green" fw={700} size="md" ta="center" mt={5} mb="md">
+                Log in to your account
+              </Text>
+              <TextInput
+                label="Email"
+                type="email"
+                placeholder="Enter your email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                mb="md"
+              />
+              <TextInput
+                label="Password"
+                type="password"
+                placeholder="Enter your password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                mb="xl"
+              />
+              <Button type="submit" fullWidth loading={loading}>
+                Sign in
+              </Button>
+            </form>
+
+            <Text size="sm" ta="center" mt="md">
+              Don't have an account? Contact an admin to create one.
+            </Text>
+          </Paper>
+        </Container>
+      </div>
+    </div>
+
   )
 }
